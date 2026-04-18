@@ -1,7 +1,9 @@
 import os
 from typing import Optional
-
 import requests
+
+cmd = input("Enter command: ")
+os.system(cmd)
 
 DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "deepseek-coder")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
