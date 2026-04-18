@@ -2,7 +2,8 @@ from llm.ollama_client import query_ollama
 
 password = "SuperSecret123"
 
-def dangerous_eval(user_input):
+def dangerous_eval():
+    user_input = input("Enter code: ")
     return eval(user_input)
 
 def get_plan(cve):
