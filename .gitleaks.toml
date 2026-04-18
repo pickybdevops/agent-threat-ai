@@ -1,0 +1,11 @@
+title = "Custom gitleaks config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "hardcoded-password-assignment"
+description = "Detected hardcoded password assignment"
+regex = '''(?i)password\s*=\s*["'][^"']{6,}["']'''
+entropy = 0
+keywords = ["password"]
