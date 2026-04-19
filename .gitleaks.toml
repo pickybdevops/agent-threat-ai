@@ -1,4 +1,13 @@
-title = "Custom gitleaks config"
+title = "Custom gitleaks config for learning"
+
+# This file demonstrates how organizations extend default secret scanning.
+# The custom rule below is intentionally simple so you can see how a pipeline
+# can be taught to fail on organization-specific patterns.
+#
+# CURRENT STATE FOR FIRST LEARNING BLOCK:
+# - The repo contains no hardcoded password assignment, so Gitleaks should pass.
+# - If you later add a line like: password = "SuperSecret123"
+#   the workflow should fail and show you exactly where the leak was detected.
 
 [extend]
 useDefault = true

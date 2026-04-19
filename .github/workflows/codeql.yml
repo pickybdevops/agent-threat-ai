@@ -1,4 +1,19 @@
-name: CodeQL Analysis
+name: Secure Python CI/CD Learning Pipeline
+
+# This workflow is intentionally verbose because it is being used as a learning
+# repo for DevSecOps / GHAS concepts.
+#
+# FIRST LEARNING BLOCK THIS COVERS:
+# 1) GitHub Actions pipeline wiring
+# 2) CodeQL static analysis (SAST) through an advanced YAML workflow
+# 3) Secret scanning with Gitleaks
+# 4) Dependency vulnerability scanning with pip-audit
+#
+# Important behavioral note:
+# - CodeQL usually UPLOADS alerts to GitHub code scanning.
+# - CodeQL does NOT normally fail the workflow just because it found alerts.
+# - To block PRs on CodeQL findings, you use repository protection rules.
+# - Gitleaks and pip-audit are different: they can fail the workflow directly.
 
 on:
   push:
@@ -6,14 +21,18 @@ on:
   pull_request:
     branches: [main]
   schedule:
+    # Weekly scan so security checks still run even when developers are not
+    # actively pushing changes.
     - cron: '24 3 * * 1'
 
 permissions:
+  # Minimum permissions required for this workflow.
   actions: read
   contents: read
   security-events: write
 
 env:
+  # Future-proof JavaScript based GitHub Actions against Node runtime changes.
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -28,38 +47,54 @@ jobs:
 
     steps:
       - name: Checkout repository
+        # Pull the repo contents into the runner so tools can analyze source.
         uses: actions/checkout@v6
 
       - name: Set up Python
+        # Create the Python runtime used by install, audit, tests, etc.
         uses: actions/setup-python@v6
         with:
           python-version: '3.11'
           cache: 'pip'
 
       - name: Install dependencies
+        # Install the application dependencies first so audit tools and any
+        # import-based analysis have a realistic environment.
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Initialize CodeQL
+        # Use the advanced YAML setup instead of GitHub default setup.
+        # The `queries` setting expands coverage beyond the light default pack.
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
 
       - name: Autobuild
+        # Python often does not need a real build, but keeping this step mirrors
+        # a standard enterprise template and lets CodeQL prepare the database.
         uses: github/codeql-action/autobuild@v4
 
       - name: Perform CodeQL Analysis
+        # This uploads alerts to GitHub code scanning. Successful upload means
+        # the SAST part of the workflow completed successfully.
         uses: github/codeql-action/analyze@v4
         with:
           category: /language:${{ matrix.language }}
 
-      - name: Secret scan
+      - name: Secret scan with Gitleaks
+        # Gitleaks is configured with a custom rule file in this repo so you can
+        # learn how organizations extend default secret scanning behavior.
         uses: gacts/gitleaks@v1.3.2
         with:
           config-path: .gitleaks.toml
 
-      - name: Dependency check
+      - name: Dependency vulnerability audit
+        # This step checks installed Python packages against known advisories.
+        # Unlike CodeQL, this step can fail the workflow directly if vulnerable
+        # packages are present.
         run: |
           pip install pip-audit
           pip-audit
