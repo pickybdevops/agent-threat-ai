@@ -4,8 +4,9 @@ import subprocess
 
 app = Flask(__name__)
 
+'''This is a vulnerable Flask application designed for testing purposes. It includes
 password = "SuperSecret123"
-
+'''
 @app.route("/eval")
 def eval_route():
     expr = request.args.get("expr", "")
