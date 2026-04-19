@@ -1,7 +1,7 @@
 from llm.ollama_client import query_ollama
 
 ''' This vulnerable code is intentionally included to demonstrate the risks of executing untrusted input. In a real application, never use eval or os.system with user input without proper sanitization and validation. The password variable is included as a placeholder to illustrate that sensitive information could be exposed if the code is exploited.
-password = "SuperSecret123"
+
 '''
 
 def dangerous_eval():
