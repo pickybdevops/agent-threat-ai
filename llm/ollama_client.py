@@ -1,25 +1,12 @@
-"""Local LLM client used by the demo application.
-
-This file also contains one intentionally unsafe helper so CodeQL has another
-pattern to inspect.
-"""
-
 import os
-import subprocess
 from typing import Optional
-
 import requests
 
-
-def dangerous_command(command: str) -> None:
-    """Deliberately unsafe command execution helper for SAST learning.
-
-    Why this exists:
-    - Shell execution of untrusted data is a common high-risk pattern.
-    - It gives CodeQL a second classic sink to reason about.
-    """
-    subprocess.run(command, shell=True, check=False)
-
+# Learning Block 1 note:
+# dangerous_command is intentionally unsafe so CodeQL can flag command execution based on untrusted input.
+# In real applications, avoid shell execution of user-controlled strings.
+def dangerous_command(user_input):
+    os.system(user_input)
 
 DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "deepseek-coder")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")

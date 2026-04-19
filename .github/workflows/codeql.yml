@@ -1,19 +1,14 @@
-name: Secure Python CI/CD Learning Pipeline
+name: DevSecOps Learning Pipeline
 
-# This workflow is intentionally verbose because it is being used as a learning
-# repo for DevSecOps / GHAS concepts.
+# This workflow is intentionally verbose and heavily commented.
+# It demonstrates the first two LCRA-aligned learning blocks:
+#   1) Code scanning / secret scanning / dependency scanning
+#   2) Container scanning (Trivy) and Infrastructure as Code scanning (Checkov)
 #
-# FIRST LEARNING BLOCK THIS COVERS:
-# 1) GitHub Actions pipeline wiring
-# 2) CodeQL static analysis (SAST) through an advanced YAML workflow
-# 3) Secret scanning with Gitleaks
-# 4) Dependency vulnerability scanning with pip-audit
-#
-# Important behavioral note:
-# - CodeQL usually UPLOADS alerts to GitHub code scanning.
-# - CodeQL does NOT normally fail the workflow just because it found alerts.
-# - To block PRs on CodeQL findings, you use repository protection rules.
-# - Gitleaks and pip-audit are different: they can fail the workflow directly.
+# Important mental model:
+# - CodeQL uploads alerts to GitHub Code Scanning.
+# - Gitleaks, pip-audit, Trivy, and Checkov can fail the job directly based on findings.
+# - In real enterprise CI/CD, all of these together form layered guardrails.
 
 on:
   push:
@@ -21,19 +16,22 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    # Weekly scan so security checks still run even when developers are not
-    # actively pushing changes.
+    # Weekly scheduled rescan so security checks still run even when no new code is pushed.
     - cron: '24 3 * * 1'
 
 permissions:
-  # Minimum permissions required for this workflow.
-  actions: read
+  # Read repository contents so Actions can fetch code.
   contents: read
+  # Read Actions metadata.
+  actions: read
+  # Write CodeQL findings back into GitHub code scanning.
   security-events: write
 
 env:
-  # Future-proof JavaScript based GitHub Actions against Node runtime changes.
+  # Future-proof JavaScript based actions against old Node runtimes on GitHub runners.
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Reuse the same image name across build and scan steps.
+  IMAGE_NAME: agent-threat-ai-learning
 
 jobs:
   analyze:
@@ -47,54 +45,67 @@ jobs:
 
     steps:
       - name: Checkout repository
-        # Pull the repo contents into the runner so tools can analyze source.
         uses: actions/checkout@v6
 
       - name: Set up Python
-        # Create the Python runtime used by install, audit, tests, etc.
         uses: actions/setup-python@v6
         with:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Install dependencies
-        # Install the application dependencies first so audit tools and any
-        # import-based analysis have a realistic environment.
+      - name: Install Python dependencies
         run: |
+          # Install application requirements so CodeQL and pip-audit can inspect a realistic environment.
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Initialize CodeQL
-        # Use the advanced YAML setup instead of GitHub default setup.
-        # The `queries` setting expands coverage beyond the light default pack.
         uses: github/codeql-action/init@v4
         with:
+          # We are scanning Python in this learning repo.
           languages: ${{ matrix.language }}
-          queries: security-extended,security-and-quality
 
       - name: Autobuild
-        # Python often does not need a real build, but keeping this step mirrors
-        # a standard enterprise template and lets CodeQL prepare the database.
         uses: github/codeql-action/autobuild@v4
 
       - name: Perform CodeQL Analysis
-        # This uploads alerts to GitHub code scanning. Successful upload means
-        # the SAST part of the workflow completed successfully.
         uses: github/codeql-action/analyze@v4
         with:
           category: /language:${{ matrix.language }}
 
       - name: Secret scan with Gitleaks
-        # Gitleaks is configured with a custom rule file in this repo so you can
-        # learn how organizations extend default secret scanning behavior.
         uses: gacts/gitleaks@v1.3.2
         with:
+          # Custom config extends defaults and lets you control what counts as a leak.
           config-path: .gitleaks.toml
 
-      - name: Dependency vulnerability audit
-        # This step checks installed Python packages against known advisories.
-        # Unlike CodeQL, this step can fail the workflow directly if vulnerable
-        # packages are present.
+      - name: Python dependency scan with pip-audit
         run: |
+          # This is Software Composition Analysis (SCA) for Python packages.
           pip install pip-audit
           pip-audit
+
+      - name: Build container image for Trivy scan
+        run: |
+          # Build the local image from Dockerfile so Trivy can inspect OS packages and app dependencies.
+          docker build -t $IMAGE_NAME:latest .
+
+      - name: Container scan with Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}:latest
+          format: table
+          # Fail the pipeline if High/Critical image vulnerabilities are found.
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'HIGH,CRITICAL'
+
+      - name: IaC scan with Checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          # Scan only the intentionally insecure demo Terraform for learning purposes.
+          directory: iac-demo
+          framework: terraform
+          output_format: cli
+          # Fail when Checkov finds policy violations.
+          soft_fail: false
