@@ -1,28 +1,35 @@
-# Learning Block 2: Container image used only for CI security scanning demonstration.
+# Learning Block 2: container image for CI security scanning demonstration.
 #
-# Why this file exists:
-# - Trivy scans built container images for OS/package vulnerabilities and misconfigurations.
-# - We keep it simple so you can inspect it line by line.
-# - The application still runs locally with `python main.py`; this Dockerfile is mainly for pipeline learning.
+# Why this version is better:
+# - Uses a slimmer Python base image to reduce OS package count
+# - Reduces attack surface and usually lowers Trivy findings
+# - Keeps the file simple enough for learning and interviews
 #
-# Note: we intentionally use a general Python base image instead of an aggressively minimized image so Trivy
-# has something realistic to inspect. In production you would usually prefer a smaller hardened base image.
-FROM python:3.11
+# In production, you would also consider:
+# - pinning the base image by digest
+# - multi-stage builds
+# - regularly rebuilding from patched base images
+FROM python:3.11-slim
 
-# Set a predictable working directory inside the image.
+# Keep Python output predictable in containers.
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Set working directory.
 WORKDIR /app
 
-# Copy dependency manifest first for better Docker layer caching.
+# Copy dependency manifest first for better layer caching.
 COPY requirements.txt ./
 
-# Install application dependencies.
-RUN pip install --no-cache-dir -r requirements.txt
+# Upgrade pip and install dependencies without cache.
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the source code into the image.
+# Copy application source.
 COPY . .
 
-# Expose the Flask demonstration port used by vuln-test/vuln-test.py if you run it manually.
+# Expose demo Flask port if run manually.
 EXPOSE 5000
 
-# Default command for local image execution.
+# Default command.
 CMD ["python", "main.py"]
