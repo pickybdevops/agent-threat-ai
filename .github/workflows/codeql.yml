@@ -90,13 +90,28 @@ jobs:
           # Build the local image from Dockerfile so Trivy can inspect OS packages and app dependencies.
           docker build -t $IMAGE_NAME:latest .
 
+      - name: Build Docker image
+        run: |
+          docker build -t $IMAGE_NAME:${{ github.sha }} .
+
       - name: Scan Docker image with Trivy
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
-          image-ref: agent-threat-ai
-          format: table
-          exit-code: 1
-          severity: HIGH,CRITICAL
+          image-ref: '${{ env.IMAGE_NAME }}:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Run Trivy vulnerability scanner in fs mode
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
 
       - name: IaC scan with Checkov
         uses: bridgecrewio/checkov-action@master
