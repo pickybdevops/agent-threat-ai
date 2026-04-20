@@ -103,6 +103,7 @@ jobs:
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
+          trivyignores: '.trivyignore'
 
       - name: Run Trivy vulnerability scanner in fs mode
         uses: aquasecurity/trivy-action@0.35.0
@@ -114,11 +115,31 @@ jobs:
           severity: 'CRITICAL,HIGH'
           ignore-unfixed: true
 
-      - name: IaC scan with Checkov
+      - name: AWS IaC scan with Checkov
         uses: bridgecrewio/checkov-action@master
         with:
           # Scan only the intentionally insecure demo Terraform for learning purposes.
-          directory: iac-demo
+          directory: iac-demo/aws/secure
+          framework: terraform
+          output_format: cli
+          # Fail when Checkov finds policy violations.
+          soft_fail: false
+
+      - name: AWS IaC scan with Checkov Insecure
+        uses: bridgecrewio/checkov-action@master
+        with:
+          # Scan only the intentionally insecure demo Terraform for learning purposes.
+          directory: iac-demo/aws/insecure
+          framework: terraform
+          output_format: cli
+          # Fail when Checkov finds policy violations.
+          soft_fail: false
+
+      - name: Azure IaC scan with Checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          # Scan only the intentionally insecure demo Terraform for learning purposes.
+          directory: iac-demo/azure
           framework: terraform
           output_format: cli
           # Fail when Checkov finds policy violations.

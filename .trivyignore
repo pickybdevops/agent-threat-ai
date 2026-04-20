@@ -1,0 +1,10 @@
+# .trivyignore
+# Format:
+# CVE-ID [optional explanation as a comment above]
+
+# Example: temporarily accepted until base image refresh window
+CVE-2026-28390
+
+# Example: accepted until dependency bump is tested
+CVE-2026-23949
+CVE-2026-24049
